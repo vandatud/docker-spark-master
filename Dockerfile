@@ -1,7 +1,14 @@
 FROM phusion/baseimage:latest
 
-MAINTAINER Thomas Gruender
+MAINTAINER Thomas Gruender <thomas.gruender@tu-dresden.de>, Brian Rimek <brian.rimek@tu-dresden.de>
 LABEL version="spark-master-2.1"
+LABEL release="0.1.1"
+
+ARG JAVA_MAJOR_VERSION=7
+ARG SPARK_VERSION=2.1.0
+ARG HADOOP_MAJOR_VERSION=2.7
+ARG SPARK_WORKDIR=/opt/spark
+ARG SPARK_ARCHIVE=http://www-eu.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_MAJOR_VERSION}.tgz
 
 # Install Python.
 RUN \
@@ -17,10 +24,8 @@ RUN \
   apt-get -y upgrade && \
   apt-get install -y build-essential && \
   apt-get install -y software-properties-common && \
-  apt-get install -y byobu curl git htop man unzip nano wget && \
+  apt-get install -y byobu curl git htop man unzip nano vim wget && \
   rm -rf /var/lib/apt/lists/*
-
-ARG JAVA_MAJOR_VERSION=7
 
 # Install Java
 RUN \
@@ -34,25 +39,49 @@ RUN \
 # Define commonly used JAVA_HOME variable
 ENV JAVA_HOME /usr/lib/jvm/java-${JAVA_MAJOR_VERSION}-oracle
 
-ARG SPARK_VERSION=2.1.0
-ARG MAJOR_HADOOP_VERSION=2.7
+# Download/Install Spark
+RUN mkdir ${SPARK_WORKDIR}
+WORKDIR ${SPARK_WORKDIR}
+RUN \  
+  wget ${SPARK_ARCHIVE} && \
+  tar -xvzf spark-${SPARK_VERSION}-bin-hadoop${HADOOP_MAJOR_VERSION}.tgz && \
+  rm spark-${SPARK_VERSION}-bin-hadoop${HADOOP_MAJOR_VERSION}.tgz && \
+  chown -R root:root spark-${SPARK_VERSION}-bin-hadoop${HADOOP_MAJOR_VERSION} && \
+  ln -s spark-${SPARK_VERSION}-bin-hadoop${HADOOP_MAJOR_VERSION} ${SPARK_WORKDIR}/current && \
+  mkdir current/logs && \
+  touch current/logs/spark-service.log
 
-# download per hand because it cant compile
-RUN wget http://www-eu.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${MAJOR_HADOOP_VERSION}.tgz
-RUN tar -xvzf spark-${SPARK_VERSION}-bin-hadoop${MAJOR_HADOOP_VERSION}.tgz
-RUN mv /spark-${SPARK_VERSION}-bin-hadoop${MAJOR_HADOOP_VERSION} /spark
+# Define SPARK_HOME variable
+ENV SPARK_HOME ${SPARK_WORKDIR}/current
 
-WORKDIR spark
+# Set SPARK_HOME to PATH
+ENV PATH $PATH:$SPARK_HOME/bin
 
-ENV SPARK_HOME /spark
+# Config Spark-master as a Service
+RUN mkdir /etc/service/spark-master
+ADD files/run.spark-master /tmp/run.spark-master
+ADD files/spark-env.sh /tmp/spark-env.sh
+# DOS-fix: Make sure files have unix line endings and execute permission
+RUN \
+  tr -d '\015' < /tmp/run.spark-master > /tmp/run.spark-master-unix && \
+  mv /tmp/run.spark-master-unix /etc/service/spark-master/run && \
+  chmod +x /etc/service/spark-master/run && \
+  tr -d '\015' < /tmp/spark-env.sh > /tmp/spark-env-unix.sh && \
+  mv /tmp/spark-env-unix.sh ${SPARK_HOME}/conf/spark-env.sh && \
+  chmod +x ${SPARK_HOME}/conf/spark-env.sh
 
-expose 4040
-expose 7077
-expose 8080
+# Config Spark-master tu run as script during container startup
+#RUN mkdir -p /etc/my_init.d
+#ADD files/spark-master.sh /tmp/spark-master.sh
+# DOS-fix: Make sure files have unix line endings and execute permission
+#RUN \
+#  tr -d '\015' < /tmp/spark-master.sh > /tmp/spark-master-unix.sh && \
+#  mv /tmp/spark-master-unix.sh /etc/my_init.d/spark-master.sh && \
+#  chmod +x /etc/my_init.d/spark-master.sh
 
-RUN mkdir -p /etc/my_init.d
-ADD spark-master.sh /etc/my_init.d/spark-master.sh
-RUN chmod +x /etc/my_init.d/spark-master.sh
+EXPOSE 4040
+EXPOSE 7077
+EXPOSE 8080
 
 # Clean up APT when done.
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
