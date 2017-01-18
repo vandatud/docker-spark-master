@@ -2,7 +2,7 @@ FROM phusion/baseimage:latest
 
 MAINTAINER Thomas Gruender <thomas.gruender@tu-dresden.de>, Brian Rimek <brian.rimek@tu-dresden.de>
 LABEL version="spark-master-2.1"
-LABEL release="0.1.1"
+LABEL release="0.1.2"
 
 ARG JAVA_MAJOR_VERSION=7
 ARG SPARK_VERSION=2.1.0
