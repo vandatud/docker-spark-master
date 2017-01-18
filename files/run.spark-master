@@ -1,2 +1,0 @@
-#!/bin/sh
-exec $SPARK_HOME/sbin/start-spark-master.sh >>$SPARK_HOME/logs/spark-service.log 2>&1

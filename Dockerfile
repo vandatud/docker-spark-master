@@ -1,17 +1,7 @@
-FROM phusion/baseimage
+FROM phusion/baseimage:latest
 
-# Use baseimage-docker's init system.
-CMD ["/sbin/my_init"]
-
-MAINTAINER Brian Rimek
-LABEL vanda.version="spark-master-2.1"
-LABEL vanda.release="2017-01-17"
-
-ARG JAVA_MAJOR_VERSION=7
-ARG SPARK_VERSION=2.1.0
-ARG HADOOP_MAJOR_VERSION=2.7
-ARG SPARK_WORKDIR=/opt/spark
-ARG SPARK_ARCHIVE=http://www-eu.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${HADOOP_MAJOR_VERSION}.tgz
+MAINTAINER Thomas Gruender
+LABEL version="spark-master-2.1"
 
 # Install Python.
 RUN \
@@ -20,13 +10,6 @@ RUN \
   apt-get install -y python3-numpy python3-wheel && \
   rm -rf /var/lib/apt/lists/*
 
-# Install R
-RUN echo "deb http://cran.rstudio.com/bin/linux/ubuntu xenial/" | tee -a /etc/apt/sources.list && \
-    gpg --keyserver keyserver.ubuntu.com --recv-key E084DAB9 && \
-    gpg -a --export E084DAB9 | apt-key add - && \
-    apt-get update && \
-    apt-get install -y r-base r-base-dev
-
 # Install system tools
 RUN \
   sed -i 's/# \(.*multiverse$\)/\1/g' /etc/apt/sources.list && \
@@ -34,8 +17,10 @@ RUN \
   apt-get -y upgrade && \
   apt-get install -y build-essential && \
   apt-get install -y software-properties-common && \
-  apt-get install -y byobu curl git htop man unzip nano vim wget && \
+  apt-get install -y byobu curl git htop man unzip nano wget && \
   rm -rf /var/lib/apt/lists/*
+
+ARG JAVA_MAJOR_VERSION=7
 
 # Install Java
 RUN \
@@ -49,38 +34,25 @@ RUN \
 # Define commonly used JAVA_HOME variable
 ENV JAVA_HOME /usr/lib/jvm/java-${JAVA_MAJOR_VERSION}-oracle
 
-# Update pip and install tensorflow
-RUN pip3 install --upgrade pip
-RUN pip3 install tensorflow
+ARG SPARK_VERSION=2.1.0
+ARG MAJOR_HADOOP_VERSION=2.7
 
-# Download/Install Spark
-RUN mkdir ${SPARK_WORKDIR}
-WORKDIR ${SPARK_WORKDIR}
-RUN \  
-  wget ${SPARK_ARCHIVE} && \
-  tar -xvzf spark-${SPARK_VERSION}-bin-hadoop${HADOOP_MAJOR_VERSION}.tgz && \
-  rm spark-${SPARK_VERSION}-bin-hadoop${HADOOP_MAJOR_VERSION}.tgz && \
-  chown -R root:root spark-${SPARK_VERSION}-bin-hadoop${HADOOP_MAJOR_VERSION} && \
-  ln -s spark-${SPARK_VERSION}-bin-hadoop${HADOOP_MAJOR_VERSION} ${SPARK_WORKDIR}/current && \
-  mkdir current/logs && \
-  touch current/logs/spark-service.log
+# download per hand because it cant compile
+RUN wget http://www-eu.apache.org/dist/spark/spark-${SPARK_VERSION}/spark-${SPARK_VERSION}-bin-hadoop${MAJOR_HADOOP_VERSION}.tgz
+RUN tar -xvzf spark-${SPARK_VERSION}-bin-hadoop${MAJOR_HADOOP_VERSION}.tgz
+RUN mv /spark-${SPARK_VERSION}-bin-hadoop${MAJOR_HADOOP_VERSION} /spark
 
-# Define SPARK_HOME variable
-ENV SPARK_HOME ${SPARK_WORKDIR}/current
+WORKDIR spark
 
-# Set SPARK_HOME to PATH
-ENV PATH $PATH:$SPARK_HOME/bin
+ENV SPARK_HOME /spark
 
-# Config Spark Master as a Service
-RUN mkdir /etc/service/spark
-ADD files/run.spark-master /etc/service/spark/run
-ADD files/spark-env.sh ${SPARK_HOME}/conf/spark-env.sh
+expose 4040
+expose 7077
+expose 8080
 
-EXPOSE 4040
-EXPOSE 7077
-EXPOSE 8080
-
-#CMD ["/spark/sbin/start-master.sh"]
+RUN mkdir -p /etc/my_init.d
+ADD spark-master.sh /etc/my_init.d/spark-master.sh
+RUN chmod +x /etc/my_init.d/spark-master.sh
 
 # Clean up APT when done.
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
