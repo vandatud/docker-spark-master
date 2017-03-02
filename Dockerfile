@@ -2,7 +2,7 @@ FROM phusion/baseimage:latest
 
 MAINTAINER Thomas Gruender <thomas.gruender@tu-dresden.de>, Brian Rimek <brian.rimek@tu-dresden.de>
 LABEL version="spark-master-2.1"
-LABEL release="0.1.2"
+LABEL release="0.1.4"
 
 ARG JAVA_MAJOR_VERSION=7
 ARG SPARK_VERSION=2.1.0
@@ -60,15 +60,11 @@ ENV PATH $PATH:$SPARK_HOME/bin
 # Config Spark-master as a Service
 RUN mkdir /etc/service/spark-master
 ADD files/run.spark-master /tmp/run.spark-master
-ADD files/spark-env.sh /tmp/spark-env.sh
 # DOS-fix: Make sure files have unix line endings and execute permission
 RUN \
   tr -d '\015' < /tmp/run.spark-master > /tmp/run.spark-master-unix && \
   mv /tmp/run.spark-master-unix /etc/service/spark-master/run && \
-  chmod +x /etc/service/spark-master/run && \
-  tr -d '\015' < /tmp/spark-env.sh > /tmp/spark-env-unix.sh && \
-  mv /tmp/spark-env-unix.sh ${SPARK_HOME}/conf/spark-env.sh && \
-  chmod +x ${SPARK_HOME}/conf/spark-env.sh
+  chmod +x /etc/service/spark-master/run
 
 # Config Spark-master tu run as script during container startup
 #RUN mkdir -p /etc/my_init.d
