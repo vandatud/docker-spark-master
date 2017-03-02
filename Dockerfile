@@ -79,9 +79,5 @@ RUN \
 #  mv /tmp/spark-master-unix.sh /etc/my_init.d/spark-master.sh && \
 #  chmod +x /etc/my_init.d/spark-master.sh
 
-EXPOSE 4040
-EXPOSE 7077
-EXPOSE 8080
-
 # Clean up APT when done.
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*

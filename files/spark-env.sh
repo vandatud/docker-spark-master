@@ -65,4 +65,5 @@
 # - SPARK_NICENESS      The scheduling priority for daemons. (Default 0)
 # - SPARK_NO_DAEMONIZE  Run the proposed command in the foreground. It will not output a PID file.
 
-SPARK_NO_DAEMONIZE=1
+#SPARK_NO_DAEMONIZE=1
+#SPARK_MASTER_HOST=spark-master
