@@ -77,3 +77,5 @@ RUN \
 
 # Clean up APT when done.
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+EXPOSE 4044 6066 7077 8080
